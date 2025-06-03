@@ -1,0 +1,22 @@
+identifier: pic32cm25xx_xpro
+name: PIC32CM25XX Xplained Pro
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+flash: 256
+ram: 16
+supported:
+  - adc
+  - counter
+  - dma
+  - gpio
+  - i2c
+  - pwm
+  - spi
+  - uart
+  - usb_device
+  - watchdog
+vendor: microchip

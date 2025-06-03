@@ -1,0 +1,12 @@
+# Microchip PIC32 WDT configuration
+
+# Copyright (c) 2025 Microchip Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config WDT_PIC32
+	bool "Microchip PIC32 series Watchdog (WDT) Driver"
+	default y
+	depends on DT_HAS_MICROCHIP_PIC32_WATCHDOG_ENABLED
+	select HAS_WDT_DISABLE_AT_BOOT
+	help
+	  Enable WDT driver for Microchip PIC32 MCUs.

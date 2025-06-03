@@ -161,4 +161,6 @@ source "drivers/watchdog/Kconfig.xilinx_wwdt"
 
 source "drivers/watchdog/Kconfig.ti_rti"
 
+source "drivers/watchdog/Kconfig.pic32"
+
 endif # WATCHDOG

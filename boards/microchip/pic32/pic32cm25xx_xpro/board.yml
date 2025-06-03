@@ -1,0 +1,5 @@
+board:
+  name: pic32cm25xx_xpro
+  vendor: microchip
+  socs:
+    - name: pic32cm2564

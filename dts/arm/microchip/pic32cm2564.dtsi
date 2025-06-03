@@ -1,0 +1,121 @@
+#include <mem.h>
+#include <arm/armv6-m.dtsi>
+
+/ {
+	aliases {
+		watchdog0 = &wdog;
+		sercom-3 = &sercom3;
+	};
+
+	chosen {
+		zephyr,flash-controller = &nvmctrl;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m0+";
+			reg = <0>;
+		};
+	};
+
+	sram0: memory@20010000 {
+	       compatible = "mmio-sram";
+	       reg = <0x20010000 DT_SIZE_K(16)>;
+	};	
+
+	clocks {
+		apll: apll {
+			compatible = "microchip,pic32-apll";
+			#clock-cells = <0>;
+			clock-frequency = <DT_FREQ_M(50)>;
+			status = "disabled";
+		};
+
+		fpll: fpll {
+			compatible = "microchip,pic32-fpll";
+			#clock-cells = <0>;
+			clock-frequency = <DT_FREQ_M(50)>;
+			status = "disabled";
+		};
+	};
+
+	soc {
+		nvmctrl: nvmctrl@40106000 {
+			compatible = "microchip,pic32-nvmctrl";
+			reg = <0x40106000 0x80>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			flash0: flash@0 {
+				compatible = "soc-nv-flash";
+				reg = <0 DT_SIZE_K(256)>;
+				erase-block-size = <1024>;
+				write-block-size = <4>;
+			};
+		};
+		
+		wdog: watchdog@4010c000 {
+			compatible = "microchip,pic32-watchdog";
+			reg = <0x4010c000 13>;
+			interrupts = <2 0>;
+		};
+
+		pm: pm@40116000 {
+			compatible = "microchip,pic32-pm";
+			reg = <0x40116000 0x38>;
+			interrupts = <0 0>;
+			#clock-cells = <2>;
+		};
+
+		clkrstgen: clkrstgen@40102000 {
+			compatible = "microchip,pic32-clkrstgen";
+			reg = <0x40102000 0x3D>;
+			#clock-cells = <1>;
+			clocks = <&apll>;
+		};
+
+		pinmux_a: pinmux@41004400 {
+			compatible = "microchip,pic32-pinmux";
+			reg = <0x41004400 0x80>;
+		};
+
+		pinmux_b: pinmux@41004480 {
+			compatible = "microchip,pic32-pinmux";
+			reg = <0x41004480 0x80>;
+		};
+
+		sercom3: sercom@41003000 {
+			compatible = "microchip,pic32-sercom";
+			reg = <0x41003000 0x34>;
+			interrupts = <27 0>;
+			clocks = <&clkrstgen 0x6>;
+			clock-names = "CLKRSTGEN";
+			status = "disabled";
+		};
+
+		pinctrl: pinctrl@40115000 {
+		 	compatible = "microchip,pic32-pinctrl";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x40115000 0x40115000 0x68>;
+		};
+
+		gpio: gpio@40114000 {
+			compatible = "microchip,pic32-gpio";
+			reg = <0x40114000 0x80>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <16>;
+			interrupts = <22 2>;
+		};
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <3>;
+};

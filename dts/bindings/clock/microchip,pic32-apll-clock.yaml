@@ -1,0 +1,15 @@
+# Copyright (c) 2025, Microchip Technology Inc
+# SPDX-License-Identifier: Apache-2.0
+
+description: Microchip PIC32 APLL Clock
+
+compatible: "microchip,pic32-apll"
+
+include: [fixed-clock.yaml]
+
+properties:
+  clock-frequency:
+    type: int
+    required: true
+    description: |
+      clock frequency in Hz.
