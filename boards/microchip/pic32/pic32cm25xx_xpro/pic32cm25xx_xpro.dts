@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) 2024 Microchip Technology Inc
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <freq.h>
+#include <microchip/pic32cm2564.dtsi>
+#include "pic32cm25xx_xpro-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "PIC32CM25XX Xplained Pro";
+	compatible = "pic32cm25xx,xpro", "microchip,pic32cm2564", "microchip,pic32cm25xx";
+	chosen {
+		zephyr,console = &sercom3;
+		zephyr,shell-uart = &sercom3;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+
+	aliases {
+		led2 = &myled2;
+		led6 = &myled6;
+		led8 = &myled8;
+		led10 = &myled10;
+		sw3 = &button1;
+	};
+
+	leds {
+		//6, 2, 10->LD8, 14->LD10 
+		compatible = "gpio-leds";
+		myled2: led_2 {
+			gpios = <&gpio 2 GPIO_ACTIVE_LOW>;
+		};
+		myled6: led_6 {
+			gpios = <&gpio 6 GPIO_ACTIVE_LOW>;
+		};
+		myled8: led_8 {
+			/* DIO10 drives LD8 */
+			gpios = <&gpio 10 GPIO_ACTIVE_LOW>;
+		};
+		myled10: led_10 {
+			/* DIO14 drives LD10 */
+			gpios = <&gpio 14 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	buttons {
+   		compatible = "gpio-keys";
+   		button1: button_1 {
+   			//gpios = <&gpio 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+   			//gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
+   			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
+   			label = "User button 1";
+   		};
+	};
+};
+
+&cpu0 {                                                                         
+        clock-frequency = <DT_FREQ_M(50)>;                                      
+};
+
+&sercom3 {
+	//status = "okay";
+	status = "disabled";
+	compatible = "microchip,pic32-uart";
+	current-speed = <115200>;
+	rxpo = <1>;
+	txpo = <0>;
+
+	pinctrl-0 = <&sercom3_uart_default>;
+	pinctrl-names = "default";
+};

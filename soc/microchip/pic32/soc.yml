@@ -1,0 +1,6 @@
+family:
+- name: microchip_pic32
+  series:
+  - name: pic32cm25xx
+    socs:
+    - name: pic32cm2564

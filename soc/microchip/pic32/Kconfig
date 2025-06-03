@@ -1,0 +1,14 @@
+# Microchip PIC32 MCU family configuration options
+
+# Copyright (c) 2025 Microchip Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_FAMILY_MICROCHIP_PIC32
+	select HAS_PIC32_HAL
+	select HAS_SEGGER_RTT if ZEPHYR_SEGGER_MODULE
+
+if SOC_FAMILY_MICROCHIP_PIC32
+
+rsource "*/Kconfig"
+
+endif # SOC_FAMILY_MICROCHIP_PIC32

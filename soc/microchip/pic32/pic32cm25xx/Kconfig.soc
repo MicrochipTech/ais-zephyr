@@ -1,0 +1,18 @@
+# Copyright (c) 2025 Microchip Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_PIC32CM25XX
+	bool
+	select SOC_FAMILY_MICROCHIP_PIC32
+	help
+	  Enable support for Microchip PIC32 Cortex-M0+ microcontrollers.
+
+config SOC_SERIES
+	default "pic32cm25xx" if SOC_SERIES_PIC32CM25XX
+
+config SOC_PIC32CM2564
+	bool
+	select SOC_SERIES_PIC32CM25XX
+
+config SOC
+	default "pic32cm2564" if SOC_PIC32CM2564

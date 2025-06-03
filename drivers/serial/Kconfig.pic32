@@ -1,0 +1,20 @@
+# Microchip PIC32 SERCOM configuration options
+
+# Copyright (c) 2025 Microchip Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config UART_PIC32
+	bool "Microchip PIC32 series SERCOM UART driver"
+	default y
+	depends on DT_HAS_MICROCHIP_PIC32_UART_ENABLED
+	select SERIAL_HAS_DRIVER
+	select SERIAL_SUPPORT_INTERRUPT
+	select SERIAL_SUPPORT_ASYNC if DT_HAS_MICROCHIP_PIC32_DMAC_ENABLED
+	help
+	  This option enables the SERCOMx USART driver for Microchip PIC32 MCUs.
+
+config UART_PIC32_ASYNC
+	bool "Async UART support for Microchip PIC32 series."
+	depends on DMA_PIC32
+	depends on UART_PIC32
+	depends on UART_ASYNC_API
