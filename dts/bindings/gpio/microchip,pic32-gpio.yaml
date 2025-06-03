@@ -1,0 +1,22 @@
+description: PIC32 GPIO node
+
+compatible: "microchip,pic32-gpio"
+
+include: [gpio-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  "#gpio-cells":
+    const: 2
+
+  ngpios:
+    type: int
+    required: true
+    const: 16
+    description: Number of gpio pins
+
+gpio-cells:
+  - pin
+  - flags

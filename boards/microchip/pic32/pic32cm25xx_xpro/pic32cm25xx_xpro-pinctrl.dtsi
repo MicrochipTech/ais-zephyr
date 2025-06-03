@@ -1,0 +1,16 @@
+/*
+ * Copyright (c) 2024 Microchip Technology Inc
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <dt-bindings/pinctrl/pic32-cm25xx-pinctrl.h>
+
+&pinctrl {
+	sercom3_uart_default: sercom3_uart_default {
+		group1 {
+			pinmux = <DIO0_SERCOM3_PAD>,
+				 <DIO1_SERCOM3_PAD>;
+		};
+	};
+};

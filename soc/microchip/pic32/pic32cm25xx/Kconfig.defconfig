@@ -1,0 +1,11 @@
+# Microchip PIC32 MCU series configuration options
+
+# Copyright (c) 2025 Microchip Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_PIC32CM25XX
+
+config NUM_IRQS
+	default 32
+
+endif # SOC_SERIES_PIC32CM25XX
