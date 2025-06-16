@@ -43,8 +43,7 @@ struct uart_pic32_dev_data {
 static void wait_synchronization(sercom_usart_registers_t *const regs, uint32_t syncbusy_mask)
 {
 	while ((regs->SERCOM_USART_SYNCBUSY & syncbusy_mask) != 0) {
-	}
-}
+};
 
 static int uart_pic32_set_baudrate(sercom_usart_registers_t *const usart, uint32_t baudrate,
 				  uint32_t clk_freq_hz)
@@ -77,7 +76,6 @@ static int uart_pic32_poll_in(const struct device *dev, unsigned char *c)
 	}
 
 	*c = (unsigned char)regs->SERCOM_USART_DATA;
-
 	return 0;
 }
 
@@ -130,7 +128,6 @@ static int uart_pic32_err_check(const struct device *dev)
 					  |  SERCOM_USART_INTFLAG_STATUS_PERR_STATUS_Msk
 					  |  SERCOM_USART_INTFLAG_STATUS_COLL_STATUS_Msk
 					  |  SERCOM_USART_INTFLAG_STATUS_RXBRK_INTFLAG_Msk;
-
 	return err;
 }
 
@@ -181,7 +178,6 @@ static void uart_pic32_irq_tx_enable(const struct device *dev)
 	temp |= SERCOM_USART_INTENCLR_INTENSET_DRE_INTENSET(1) | SERCOM_USART_INTENCLR_INTENSET_TXC_INTENSET(1);
 	temp &= 0xFFFFFF00;
 	regs->SERCOM_USART_INTENCLR_INTENSET = temp;
-	return;
 }
 
 static void uart_pic32_irq_tx_disable(const struct device *dev)
@@ -247,7 +243,7 @@ static int uart_pic32_irq_is_pending(const struct device *dev)
 {
 	const struct uart_pic32_dev_cfg *config = dev->config;
 	sercom_usart_registers_t * const regs = config->regs;
-	
+
 	return (regs->SERCOM_USART_INTENCLR_INTENSET & regs->SERCOM_USART_INTFLAG_STATUS) != 0;
 }
 
@@ -285,6 +281,11 @@ static void uart_pic32_irq_callback_set(const struct device *dev,
 
 	dev_data->cb = cb;
 	dev_data->cb_data = cb_data;
+
+#if defined(CONFIG_UART_PIC32_ASYNC) && defined(CONFIG_UART_EXCLUSIVE_API_CALLBACKS)
+	dev_data->async_cb = NULL;
+	dev_data->async_cb_data = NULL;
+#endif
 }
 #endif
 

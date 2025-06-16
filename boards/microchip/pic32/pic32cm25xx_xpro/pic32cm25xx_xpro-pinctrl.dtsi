@@ -12,13 +12,7 @@
 			pinmux = <DIO4_SERCOM1_PAD>,
 				 <DIO5_SERCOM1_PAD>;
 		};
-		group2 {
-			pinmux = <DIO6_SERCOM1_PAD>,
-				 <DIO7_SERCOM1_PAD>;
-			//bias-pull-up;
-		};
 	};
-
 
 	sercom2_uart_default: sercom2_uart_default {
 		group1 {
