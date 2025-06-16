@@ -1,0 +1,9 @@
+# Copyright (c) 2025 Microchip Technology Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config CLOCK_CONTROL_PIC32
+	bool "Microchip PIC32 clock control"
+	default y
+	depends on DT_HAS_MICROCHIP_PIC32_CLKRSTGEN_ENABLED
+	help
+	  Enable driver for Microchip PIC32 Clock Control.

@@ -4,6 +4,8 @@
 / {
 	aliases {
 		watchdog0 = &wdog;
+		sercom-1 = &sercom1;
+		sercom-2 = &sercom2;
 		sercom-3 = &sercom3;
 	};
 
@@ -26,22 +28,6 @@
 	       compatible = "mmio-sram";
 	       reg = <0x20010000 DT_SIZE_K(16)>;
 	};	
-
-	clocks {
-		apll: apll {
-			compatible = "microchip,pic32-apll";
-			#clock-cells = <0>;
-			clock-frequency = <DT_FREQ_M(50)>;
-			status = "disabled";
-		};
-
-		fpll: fpll {
-			compatible = "microchip,pic32-fpll";
-			#clock-cells = <0>;
-			clock-frequency = <DT_FREQ_M(50)>;
-			status = "disabled";
-		};
-	};
 
 	soc {
 		nvmctrl: nvmctrl@40106000 {
@@ -74,9 +60,9 @@
 
 		clkrstgen: clkrstgen@40102000 {
 			compatible = "microchip,pic32-clkrstgen";
-			reg = <0x40102000 0x3D>;
+			reg = <0x40102000 0x3C>;
 			#clock-cells = <1>;
-			clocks = <&apll>;
+			status = "okay";
 		};
 
 		pinmux_a: pinmux@41004400 {
@@ -89,6 +75,24 @@
 			reg = <0x41004480 0x80>;
 		};
 
+		sercom1: sercom@41001000 {
+			compatible = "microchip,pic32-sercom";
+			reg = <0x41001000 0x34>;
+			interrupts = <25 0>;
+			clocks = <&clkrstgen 0x4>;
+			clock-names = "CLKRSTGEN";
+			status = "disabled";
+		};
+
+		sercom2: sercom@41002000 {
+			compatible = "microchip,pic32-sercom";
+			reg = <0x41002000 0x34>;
+			interrupts = <26 0>;
+			clocks = <&clkrstgen 0x5>;
+			clock-names = "CLKRSTGEN";
+			status = "disabled";
+		};
+
 		sercom3: sercom@41003000 {
 			compatible = "microchip,pic32-sercom";
 			reg = <0x41003000 0x34>;
@@ -98,13 +102,6 @@
 			status = "disabled";
 		};
 
-		pinctrl: pinctrl@40115000 {
-		 	compatible = "microchip,pic32-pinctrl";
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0x40115000 0x40115000 0x68>;
-		};
-
 		gpio: gpio@40114000 {
 			compatible = "microchip,pic32-gpio";
 			reg = <0x40114000 0x80>;
@@ -112,6 +109,13 @@
 			#gpio-cells = <2>;
 			ngpios = <16>;
 			interrupts = <22 2>;
+		};
+
+		pinctrl: pinctrl@40115000 {
+		 	compatible = "microchip,pic32-pinctrl";
+			#address-cells = <1>;
+			reg = <0x40115000 0x68>;
+			status = "okay";
 		};
 	};
 };

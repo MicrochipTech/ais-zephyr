@@ -63,13 +63,40 @@
         clock-frequency = <DT_FREQ_M(50)>;                                      
 };
 
-&sercom3 {
-	//status = "okay";
-	status = "disabled";
+dut: &sercom1 {
+	status = "okay";
 	compatible = "microchip,pic32-uart";
 	current-speed = <115200>;
 	rxpo = <1>;
 	txpo = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-0 = <&sercom1_uart_default>;
+	pinctrl-names = "default";
+};
+
+dut_aux: &sercom2 {
+	status = "okay";
+	compatible = "microchip,pic32-uart";
+	current-speed = <115200>;
+	rxpo = <1>;
+	txpo = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-0 = <&sercom2_uart_default>;
+	pinctrl-names = "default";
+};
+
+&sercom3 {
+	status = "okay";
+	compatible = "microchip,pic32-uart";
+	current-speed = <115200>;
+	rxpo = <1>;
+	txpo = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 
 	pinctrl-0 = <&sercom3_uart_default>;
 	pinctrl-names = "default";

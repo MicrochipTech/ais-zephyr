@@ -70,7 +70,7 @@ void test_mode_controller_init(void)
 	}
 }
 
-void z_arm_platform_init(void)
+void soc_reset_hook(void)
 {
 	cpuio_init();
 	pll_init();

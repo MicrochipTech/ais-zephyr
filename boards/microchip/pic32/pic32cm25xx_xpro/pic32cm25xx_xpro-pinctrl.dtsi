@@ -7,10 +7,30 @@
 #include <dt-bindings/pinctrl/pic32-cm25xx-pinctrl.h>
 
 &pinctrl {
+	sercom1_uart_default: sercom1_uart_default {
+		group1 {
+			pinmux = <DIO4_SERCOM1_PAD>,
+				 <DIO5_SERCOM1_PAD>;
+		};
+		group2 {
+			pinmux = <DIO6_SERCOM1_PAD>,
+				 <DIO7_SERCOM1_PAD>;
+			//bias-pull-up;
+		};
+	};
+
+
+	sercom2_uart_default: sercom2_uart_default {
+		group1 {
+			pinmux = <DIO8_SERCOM2_PAD>,
+				 <DIO9_SERCOM2_PAD>;
+		};
+	};
+
 	sercom3_uart_default: sercom3_uart_default {
 		group1 {
-			pinmux = <DIO0_SERCOM3_PAD>,
-				 <DIO1_SERCOM3_PAD>;
+			pinmux = <DIO12_SERCOM3_PAD>,
+				 <DIO13_SERCOM3_PAD>;
 		};
 	};
 };
