@@ -14,8 +14,5 @@ properties:
   "#clock-cells":
     const: 1
 
-  clocks:
-    required: true
-
 clock-cells:
-  - clkctrl_id
+  - id

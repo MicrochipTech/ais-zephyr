@@ -202,7 +202,7 @@ ZTEST(uart_elementary, test_uart_basic_transmission)
 						.parity = UART_CFG_PARITY_ODD,
 						.stop_bits = UART_CFG_STOP_BITS_1,
 						.data_bits = UART_CFG_DATA_BITS_8,
-						.flow_ctrl = UART_CFG_FLOW_CTRL_RTS_CTS };
+						.flow_ctrl = UART_CFG_FLOW_CTRL_NONE };
 
 	err = uart_configure(uart_dev, &test_uart_config);
 	zassert_equal(err, 0, "Unexpected error when configuring UART0: %d", err);
