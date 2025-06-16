@@ -43,6 +43,7 @@ struct uart_pic32_dev_data {
 static void wait_synchronization(sercom_usart_registers_t *const regs, uint32_t syncbusy_mask)
 {
 	while ((regs->SERCOM_USART_SYNCBUSY & syncbusy_mask) != 0) {
+	}
 };
 
 static int uart_pic32_set_baudrate(sercom_usart_registers_t *const usart, uint32_t baudrate,
