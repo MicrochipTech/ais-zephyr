@@ -173,20 +173,6 @@ static int mdio_setup_c45_indirect_access(const struct device *dev, uint16_t dev
 	return mdio_write(cfg->mdio, cfg->phy_addr, MII_MMD_ACR, devad | BIT(14));
 }
 
-static int mdio_setup_c45_indirect_read(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t *val)
-{
-	const struct mc_t1s_config *cfg = dev->config;
-	int ret;
-
-	/* Read C45 registers using C22 indirect access registers */
-	ret = mdio_setup_c45_indirect_access(dev, devad, reg);
-	if (ret) {
-		return ret;
-	}
-
-	return mdio_read(cfg->mdio, cfg->phy_addr, MII_MMD_AADR, val);
-}
-
 static int phy_mc_t1s_c45_read(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t *val)
 {
 	const struct mc_t1s_config *cfg = dev->config;
@@ -212,20 +198,6 @@ static int phy_mc_t1s_c45_read(const struct device *dev, uint8_t devad, uint16_t
 	mdio_bus_disable(cfg->mdio);
 
 	return ret;
-}
-
-static int mdio_setup_c45_indirect_write(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t val)
-{
-	const struct mc_t1s_config *cfg = dev->config;
-	int ret;
-
-	/* Write C45 registers using C22 indirect access registers */
-	ret = mdio_setup_c45_indirect_access(dev, devad, reg);
-	if (ret) {
-		return ret;
-	}
-
-	return mdio_write(cfg->mdio, cfg->phy_addr, MII_MMD_AADR, val);
 }
 
 static int phy_mc_t1s_c45_write(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t val)
