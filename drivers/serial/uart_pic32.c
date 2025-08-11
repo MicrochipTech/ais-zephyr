@@ -181,7 +181,6 @@ static void uart_pic32_irq_tx_enable(const struct device *dev)
 	temp |= SERCOM_USART_INTENCLR_INTENSET_DRE_INTENSET(1) | SERCOM_USART_INTENCLR_INTENSET_TXC_INTENSET(1);
 	temp &= 0xFFFFFF00;
 	regs->SERCOM_USART_INTENCLR_INTENSET = temp;
-	return;
 }
 
 static void uart_pic32_irq_tx_disable(const struct device *dev)
