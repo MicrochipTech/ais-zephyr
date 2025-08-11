@@ -46,9 +46,9 @@ void flash_init(void)
 void clock_configure(void)
 {
 	/* Enable all clocks */
-	CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SYS_MASK0 = 0xFFFFFFFF;
-	CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SYS_MASK1 = 0xFFFFFFFF;
-	CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SYS_MASK2 = 0xFFFFFFFF;
+	//CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SYS_MASK0 = 0xFFFFFFFF;
+	//CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SYS_MASK1 = 0xFFFFFFFF;
+	//CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SYS_MASK2 = 0xFFFFFFFF;
 	CLK_RST_GEN_REGS->CLK_RST_GEN_CG_SRC_MASK = 0xFFFFFFFF;
 }
 
@@ -72,9 +72,9 @@ void test_mode_controller_init(void)
 
 void soc_reset_hook(void)
 {
-	cpuio_init();
-	pll_init();
-	flash_init();
+	//cpuio_init();
+	//pll_init();
+	//flash_init();
 	clock_configure();
 	//test_mode_controller_init();
 }

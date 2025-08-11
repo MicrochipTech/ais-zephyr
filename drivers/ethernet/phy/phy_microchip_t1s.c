@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define PHY_ID_LAN865X_REVB  0x0007C1B3
 #define PHY_ID_LAN867X_REVC1 0x0007C164
 #define PHY_ID_LAN867X_REVC2 0x0007C165
+#define PHY_ID_LAN8660_REVA0 0x0007C230
 
 /* Configuration param registers */
 #define LAN865X_REG_CFGPARAM_ADDR    0x00D8
@@ -38,6 +39,25 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define LAN86XX_ENABLE_COL_DET    0x8000
 #define LAN86XX_COL_DET_MASK      0x8000
 #define LAN86XX_REG_COL_DET_CTRL0 0x0087
+
+/* LAN8660 Rev.A0 init settings */
+#define LAN8660_REG_COL_DET_CTRL0		0x0082
+#define LAN8660_REG_MF_CTRL0			0x00F6
+#define LAN8660_MF_RXD_ACT_ENABLE_Msk		BIT(5)
+#define LAN8660_MF_RXD_ACT_ENABLE_Val		(0x1 << 5)
+#define LAN8660_REG_MF_SIGNAL_DET_CTRL0		0x00FA
+#define LAN8660_MF_CHK_4_BEACON_Msk		BIT(9)
+#define LAN8660_MF_CHK_4_BEACON_DISABLE_Val	(0x0 << 9)
+#define LAN8660_REG_FRAME_DECODER_CTRL1		0x0092
+#define LAN8660_RX_FIFO_THRESHOLD_Msk		GENMASK(14, 9)
+#define LAN8660_RX_FIFO_THRESHOLD_Val		(0x1A << 9)
+#define LAN8660_RX_FIFO_THRESHOLD_HD_Msk	GENMASK(8, 6)
+#define LAN8660_RX_FIFO_THRESHOLD_HD_Val	(0x2 << 6)
+#define LAN8660_RX_FIFO_CRS_LOW_Msk		GENMASK(5, 0)
+#define LAN8660_RX_FIFO_CRS_LOW_Val		(0x19 << 0)
+#define LAN8660_REG_PHY_LINK_STS_CTRL		0x000015
+#define LAN8660_PHY_LINK_STS_SRC_SEL		0x1
+
 
 /* Structure holding configuration register address and value */
 typedef struct {
@@ -153,6 +173,20 @@ static int mdio_setup_c45_indirect_access(const struct device *dev, uint16_t dev
 	return mdio_write(cfg->mdio, cfg->phy_addr, MII_MMD_ACR, devad | BIT(14));
 }
 
+static int mdio_setup_c45_indirect_read(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t *val)
+{
+	const struct mc_t1s_config *cfg = dev->config;
+	int ret;
+
+	/* Read C45 registers using C22 indirect access registers */
+	ret = mdio_setup_c45_indirect_access(dev, devad, reg);
+	if (ret) {
+		return ret;
+	}
+
+	return mdio_read(cfg->mdio, cfg->phy_addr, MII_MMD_AADR, val);
+}
+
 static int phy_mc_t1s_c45_read(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t *val)
 {
 	const struct mc_t1s_config *cfg = dev->config;
@@ -178,6 +212,20 @@ static int phy_mc_t1s_c45_read(const struct device *dev, uint8_t devad, uint16_t
 	mdio_bus_disable(cfg->mdio);
 
 	return ret;
+}
+
+static int mdio_setup_c45_indirect_write(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t val)
+{
+	const struct mc_t1s_config *cfg = dev->config;
+	int ret;
+
+	/* Write C45 registers using C22 indirect access registers */
+	ret = mdio_setup_c45_indirect_access(dev, devad, reg);
+	if (ret) {
+		return ret;
+	}
+
+	return mdio_write(cfg->mdio, cfg->phy_addr, MII_MMD_AADR, val);
 }
 
 static int phy_mc_t1s_c45_write(const struct device *dev, uint8_t devad, uint16_t reg, uint16_t val)
@@ -388,6 +436,165 @@ static int phy_mc_lan865x_revb_config_init(const struct device *dev)
 	return 0;
 }
 
+static int phy_mc_lan8660_read_modify_write(const struct device *dev, uint16_t addr, uint16_t mask,
+					    uint16_t data)
+{
+	uint16_t value;
+	int ret;
+
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, addr, &value);
+	if (ret) {
+		return ret;
+	}
+
+	value &= ~mask;
+	value |= data;
+
+	return phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, addr, value);
+}
+
+static int phy_mc_lan8680_watchdog(const struct device *dev)
+{
+	uint16_t value;
+	int ret;
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD214, 0x4C);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD215, 0x0);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD214, 0x84C);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD214, 0x104C);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD215, &value);
+	if (ret) {
+		return ret;
+	}
+
+	/* Start_HsSlew Control */
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD218, 0xE001);
+	if (ret) {
+		return ret;
+	}
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD218, &value);
+	if (ret) {
+		return ret;
+	}
+
+	/* End_HsSlew Control */
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD21F, 0x1B);
+	if (ret) {
+		return ret;
+	}
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD21F, &value);
+	if (ret) {
+		return ret;
+	}
+
+	/* Start_capseld & dlyseld */
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD219, 0x33FC);
+	if (ret) {
+		return ret;
+	}
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD219, &value);
+	if (ret) {
+		return ret;
+	}
+
+	return 0;
+}
+
+static int phy_mc_lan8680_set_sbc_indirect_access(const struct device *dev)
+{
+	int ret;
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD212, 0x7341);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD212, 0x537A);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD212, 0x1);
+	if (ret) {
+		return ret;
+	}
+
+	return 0;
+}
+
+static int phy_mc_lan8680(const struct device *dev)
+{
+	int ret;
+
+	ret = phy_mc_lan8680_set_sbc_indirect_access(dev);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_lan8680_watchdog(dev);
+	if (ret) {
+		return ret;
+	}
+
+	return 0;
+}
+
+static int phy_mc_lan8660_reva0_config_init(const struct device *dev)
+{
+	uint16_t value;
+	uint16_t mask;
+	int ret;
+
+	/* PHY link status source selection: 001 - when PLCA is enabled: link status reflects
+	 * plca_status.
+	 */
+	ret = phy_write(dev, LAN8660_REG_PHY_LINK_STS_CTRL, LAN8660_PHY_LINK_STS_SRC_SEL);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_lan8680(dev);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_lan8660_read_modify_write(dev, LAN8660_REG_MF_CTRL0,
+					       LAN8660_MF_RXD_ACT_ENABLE_Msk,
+					       LAN8660_MF_RXD_ACT_ENABLE_Val);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_lan8660_read_modify_write(dev, LAN8660_REG_MF_SIGNAL_DET_CTRL0,
+					       LAN8660_MF_CHK_4_BEACON_Msk,
+					       LAN8660_MF_CHK_4_BEACON_DISABLE_Val);
+	if (ret) {
+		return ret;
+	}
+
+	mask = LAN8660_RX_FIFO_THRESHOLD_Msk | LAN8660_RX_FIFO_THRESHOLD_HD_Msk |
+	       LAN8660_RX_FIFO_CRS_LOW_Msk;
+	value = LAN8660_RX_FIFO_THRESHOLD_Val | LAN8660_RX_FIFO_THRESHOLD_HD_Val |
+		LAN8660_RX_FIFO_CRS_LOW_Val;
+	return phy_mc_lan8660_read_modify_write(dev, LAN8660_REG_FRAME_DECODER_CTRL1, mask, value);
+}
+
 /* LAN867x Rev.C1/C2 configuration settings are equal to the first 11 configuration settings and all
  * the sqi fixup settings from LAN865x Rev.B0/B1. So the same fixup registers and values from
  * LAN865x Rev.B0/B1 are used for LAN867x Rev.C1/C2 to avoid duplication.
@@ -428,11 +635,19 @@ static int phy_mc_lan867x_revc_config_init(const struct device *dev)
 
 static int lan86xx_config_collision_detection(const struct device *dev, bool plca_enable)
 {
+	struct mc_t1s_data *data = dev->data;
+	uint16_t addr;
 	uint16_t val;
 	uint16_t new;
 	int ret;
 
-	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, LAN86XX_REG_COL_DET_CTRL0, &val);
+	if (data->phy_id == PHY_ID_LAN8660_REVA0) {
+		addr = LAN8660_REG_COL_DET_CTRL0;
+	} else {
+		addr = LAN86XX_REG_COL_DET_CTRL0;
+	}
+
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, addr, &val);
 	if (ret) {
 		return ret;
 	}
@@ -447,7 +662,7 @@ static int lan86xx_config_collision_detection(const struct device *dev, bool plc
 		return 0;
 	}
 
-	return phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, LAN86XX_REG_COL_DET_CTRL0, new);
+	return phy_mc_t1s_c45_write(dev, MDIO_MMD_VENDOR_SPECIFIC2, addr, new);
 }
 
 static int phy_mc_t1s_id(const struct device *dev, uint32_t *phy_id)
@@ -484,6 +699,55 @@ static int phy_mc_t1s_set_plca_cfg(const struct device *dev, struct phy_plca_cfg
 	}
 
 	return lan86xx_config_collision_detection(dev, plca_cfg->enable);
+}
+
+static int phy_mc_t1s_read_regs(const struct device *dev)
+{
+	uint16_t value;
+	int ret;
+
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD202, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8680 PHY ID1: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xD203, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8680 PHY ID2: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xCA00, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8660 0x1FCA00: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xCA01, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8660 0x1FCA01: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xCA02, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8660 0x1FCA02: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xCA03, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8660 0x1FCA03: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xCA04, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8660 0x1FCA04: %x\n", value);
+	ret = phy_mc_t1s_c45_read(dev, MDIO_MMD_VENDOR_SPECIFIC2, 0xCA05, &value);
+	if (ret) {
+		return ret;
+	}
+	LOG_INF("lan8660 0x1FCA05: %x\n", value);
+
+	return 0;
 }
 
 static int phy_mc_t1s_set_dt_plca(const struct device *dev)
@@ -533,12 +797,24 @@ static int phy_mc_t1s_init(const struct device *dev)
 			return ret;
 		}
 		break;
+	case PHY_ID_LAN8660_REVA0:
+		ret = phy_mc_lan8660_reva0_config_init(dev);
+		if (ret) {
+			LOG_ERR("PHY initial configuration error: %d\n", ret);
+			return ret;
+		}
+		break;
 	default:
 		LOG_ERR("Unsupported PHY ID: %x\n", data->phy_id);
 		return -ENODEV;
 	}
 
 	ret = phy_mc_t1s_set_dt_plca(dev);
+	if (ret) {
+		return ret;
+	}
+
+	ret = phy_mc_t1s_read_regs(dev);
 	if (ret) {
 		return ret;
 	}

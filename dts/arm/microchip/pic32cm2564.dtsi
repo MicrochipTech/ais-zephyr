@@ -24,9 +24,11 @@
 		};
 	};
 
-	sram0: memory@20010000 {
+	//sram0: memory@20010000 {
+	sram0: memory@20000000 {
 	       compatible = "mmio-sram";
-	       reg = <0x20010000 DT_SIZE_K(16)>;
+	       //reg = <0x20000000 DT_SIZE_K(64)>;
+	       reg = <0x20000000 DT_SIZE_K(80)>;
 	};	
 
 	soc {
@@ -73,6 +75,35 @@
 		pinmux_b: pinmux@41004480 {
 			compatible = "microchip,pic32-pinmux";
 			reg = <0x41004480 0x80>;
+		};
+
+		gmac: ethernet@40109000 {
+			compatible = "microchip,pic32-gmac";
+			reg = <0x40109000 0xE48>;
+			interrupts = <17 0>;
+			interrupt-names = "gmac";
+			status = "disabled";
+
+			num-queues = <1>;
+			local-mac-address = [04 05 06 01 02 03];
+		};
+
+		mdio: mdio@40109000 {
+			compatible = "atmel,sam-mdio";
+			reg = <0x40109000 0xE48>;
+			status = "disabled";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
+		sercom0: sercom@41000000 {
+			compatible = "microchip,pic32-sercom";
+			reg = <0x41000000 0x34>;
+			interrupts = <24 0>;
+			clocks = <&clkrstgen 0x3>;
+			clock-names = "CLKRSTGEN";
+			status = "disabled";
 		};
 
 		sercom1: sercom@41001000 {

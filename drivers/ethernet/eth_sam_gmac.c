@@ -21,8 +21,10 @@
 
 #if defined(CONFIG_SOC_FAMILY_ATMEL_SAM)
 #define DT_DRV_COMPAT atmel_sam_gmac
-#else
+#elif defined(CONFIG_SOC_FAMILY_ATMEL_SAM0)
 #define DT_DRV_COMPAT atmel_sam0_gmac
+#else
+#define DT_DRV_COMPAT microchip_pic32_gmac
 #endif
 
 #define LOG_MODULE_NAME eth_sam
@@ -47,6 +49,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/clock_control/atmel_sam_pmc.h>
 #include <soc.h>
+#include <zephyr/drivers/gpio.h>
+
+#ifdef CONFIG_SOC_FAMILY_MICROCHIP_PIC32
+#include "eth_pic32_gmac.h"
+#endif
+
 #include "eth_sam_gmac_priv.h"
 
 #include "eth.h"
@@ -58,6 +66,12 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <zephyr/drivers/ptp_clock.h>
 #include <zephyr/net/gptp.h>
 #include <zephyr/irq.h>
+
+#define LED2_NODE DT_ALIAS(led2)
+#define LED6_NODE DT_ALIAS(led6)
+
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
+static const struct gpio_dt_spec led6 = GPIO_DT_SPEC_GET(LED6_NODE, gpios);
 
 #ifdef __DCACHE_PRESENT
 static bool dcache_enabled;
@@ -101,6 +115,8 @@ static inline void dcache_clean(uint32_t addr, uint32_t size)
 #define MCK_FREQ_HZ	SOC_ATMEL_SAM0_MCK_FREQ_HZ
 #elif CONFIG_SOC_FAMILY_ATMEL_SAM
 #define MCK_FREQ_HZ	SOC_ATMEL_SAM_MCK_FREQ_HZ
+#elif CONFIG_SOC_FAMILY_MICROCHIP_PIC32
+#define MCK_FREQ_HZ	SOC_MICROCHIP_PIC32_HCLK_FREQ_HZ
 #else
 #error Unsupported SoC family
 #endif
@@ -459,12 +475,39 @@ static void mac_addr_set(Gmac *gmac, uint8_t index,
 {
 	__ASSERT(index < 4, "index has to be in the range 0..3");
 
+#ifdef CONFIG_SOC_FAMILY_MICROCHIP_PIC32
+	switch (index) {
+	case 0:
+		gmac->GMAC_SPEC_ADD1_BOTTOM = (mac_addr[3] << 24) | (mac_addr[2] << 16) |
+					      (mac_addr[1] <<  8) | (mac_addr[0]);
+		gmac->GMAC_SPEC_ADD1_TOP = (mac_addr[5] <<  8) | (mac_addr[4]);
+		break;
+	case 1:
+		gmac->GMAC_SPEC_ADD2_BOTTOM = (mac_addr[3] << 24) | (mac_addr[2] << 16) |
+					      (mac_addr[1] <<  8) | (mac_addr[0]);
+		gmac->GMAC_SPEC_ADD2_TOP = (mac_addr[5] <<  8) | (mac_addr[4]);
+		break;
+	case 2:
+		gmac->GMAC_SPEC_ADD3_BOTTOM = (mac_addr[3] << 24) | (mac_addr[2] << 16) |
+					      (mac_addr[1] <<  8) | (mac_addr[0]);
+		gmac->GMAC_SPEC_ADD3_TOP = (mac_addr[5] <<  8) | (mac_addr[4]);
+		break;
+	case 3:
+		gmac->GMAC_SPEC_ADD4_BOTTOM = (mac_addr[3] << 24) | (mac_addr[2] << 16) |
+					      (mac_addr[1] <<  8) | (mac_addr[0]);
+		gmac->GMAC_SPEC_ADD4_TOP = (mac_addr[5] <<  8) | (mac_addr[4]);
+		break;
+	default:
+		break;
+	}
+#else
 	gmac->GMAC_SA[index].GMAC_SAB =   (mac_addr[3] << 24)
 					| (mac_addr[2] << 16)
 					| (mac_addr[1] <<  8)
 					| (mac_addr[0]);
 	gmac->GMAC_SA[index].GMAC_SAT =   (mac_addr[5] <<  8)
 					| (mac_addr[4]);
+#endif
 }
 
 /*
@@ -1075,6 +1118,62 @@ static int gmac_init(Gmac *gmac, uint32_t gmac_ncfgr_val)
 	/* Setup Network Configuration Register */
 	gmac->GMAC_NCFGR = gmac_ncfgr_val | mck_divisor;
 
+	gmac->GMAC_NCFGR = gmac_ncfgr_val | mck_divisor | GMAC_NETWORK_CONFIG_COPY_ALL_FRAMES_Msk |
+
+		GMAC_NETWORK_CONFIG_SPEED(0U)
+		// If 0, then half-duplex (Kepler)
+		| GMAC_NETWORK_CONFIG_FULL_DUPLEX(0U)
+		// If 1,discard non vlan tagged frames
+		| GMAC_NETWORK_CONFIG_DISCARD_NON_VLAN_FRAMES(0U)
+		// Enable jumbo frames to be accepted, Default length:10,240 bytes
+		| GMAC_NETWORK_CONFIG_JUMBO_FRAMES(0U)
+		// Accept broadcast frames
+		| GMAC_NETWORK_CONFIG_NO_BROADCAST(0U)
+		// When set, unicast frames will be accepted when the 6 bit hash
+		// function of the destination address points to a bit that is set in the hash register
+		| GMAC_NETWORK_CONFIG_UNICAST_HASH_ENABLE(0U)
+		// Setting this bit means the GEM will accept frames up to 1536 bytes in length
+		| GMAC_NETWORK_CONFIG_RECEIVE_1536_BYTE_FRAMES(1U)
+		// When set the external address match interface can be used to copy frames to memory
+		| GMAC_NETWORK_CONFIG_EXTERNAL_ADDRESS_MATCH_ENABLE(0U)
+		// 0: 10/100 operation using MII or TBI interface, 1: Gigabit operation using GMII or TBI
+		| GMAC_NETWORK_CONFIG_GIGABIT_MODE_ENABLE(0U)
+		// 0: GMII/MII interface enabled, TBI disabled, 1: TBI enabled
+		| GMAC_NETWORK_CONFIG_PCS_SELECT(0U)
+		// Enabled for test purposes
+		| GMAC_NETWORK_CONFIG_RETRY_TEST(0U)
+		// Setting this bit will cause transmission to pause if a non zero 802.3 classic pause frame is received
+		| GMAC_NETWORK_CONFIG_PAUSE_ENABLE(0U)
+		// Indicates the number of bytes by which the received data is offset from the start of the receive buffer
+		| GMAC_NETWORK_CONFIG_RECEIVE_BUFFER_OFFSET(0U)
+		// Setting this bit will cause frames with measured length shorter than extracted length to be discarded
+		| GMAC_NETWORK_CONFIG_LENGTH_FIELD_ERROR_FRAME_DISCARD(0U)
+		// Setting this bit will cause RX frames without FCS to be written to memory
+		| GMAC_NETWORK_CONFIG_FCS_REMOVE(0U)
+		// GMAC_NETWORK_CONFIG_MDC_CLOCK_DIVISION is configured when MDIO interface is configured
+		| GMAC_NETWORK_CONFIG_DATA_BUS_WIDTH(0U)
+		// If 1, only on destination address match pause frames will be copied to memory, else discarded
+		| GMAC_NETWORK_CONFIG_DISABLE_COPY_OF_PAUSE_FRAMES(0U)
+		// If 1, Frames with bad IP, TCP or UDP checksums are discarded
+		| GMAC_NETWORK_CONFIG_RECEIVE_CHECKSUM_OFFLOAD_ENABLE(1U)
+		// If 1, then frames with FCS/CRC errors will not be rejected. Error statistics will be collected
+		| GMAC_NETWORK_CONFIG_IGNORE_RX_FCS(0U)
+		// If 1, then serial gigabit media independent interface is enabled
+		| GMAC_NETWORK_CONFIG_SGMII_MODE_ENABLE(0U)
+		// If 1, then transmit Ipg gap can be extended beyond 96 bit times
+		| GMAC_NETWORK_CONFIG_IPG_STRETCH_ENABLE(0U)
+		// If 1, then receive frames with bad preamble
+		| GMAC_NETWORK_CONFIG_NSP_CHANGE(0U)
+		// Enabled only for test purpose
+		| GMAC_NETWORK_CONFIG_IGNORE_IPG_RX_ER(0U)
+		// Enable frames to be received in half-duplex mode while transmitting.
+		// Used for setting loopback tests. Memory tests can be performed if set to 1,
+		// gmac tx -> gmac rx -> memory checking without any rx/tx nodes on the network
+		| GMAC_NETWORK_CONFIG_EN_HALF_DUPLEX_RX(0U)
+		// When low the PCS will transmit idle symbols if the link goes down
+		| GMAC_NETWORK_CONFIG_UNI_DIRECTION_ENABLE(0U);
+
+#if(!CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
 	/* Default (RMII) is defined at atmel,gmac-common.yaml file */
 	switch (DT_INST_ENUM_IDX(0, phy_connection_type)) {
 	case 0: /* mii */
@@ -1090,6 +1189,7 @@ static int gmac_init(Gmac *gmac, uint32_t gmac_ncfgr_val)
 		return -EINVAL;
 	}
 
+#endif
 #if defined(CONFIG_PTP_CLOCK_SAM_GMAC)
 	/* Initialize PTP Clock Registers */
 	gmac_setup_ptp_clock_divisors(gmac);
@@ -1151,6 +1251,14 @@ static void link_configure(Gmac *gmac, bool full_duplex, bool speed_100M)
 
 	gmac->GMAC_NCFGR = val;
 
+#if defined(CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
+	gmac->GMAC_TRANSMIT_Q2_PTR = GMAC_TRANSMIT_Q2_PTR_DMA_TX_DIS_Q(1) | GMAC_TRANSMIT_Q2_PTR_DMA_TX_Q_PTR(0);
+	gmac->GMAC_TRANSMIT_Q1_PTR = GMAC_TRANSMIT_Q1_PTR_DMA_TX_DIS_Q(1) | GMAC_TRANSMIT_Q1_PTR_DMA_TX_Q_PTR(0);
+
+	gmac->GMAC_RECEIVE_Q2_PTR = GMAC_RECEIVE_Q2_PTR_DMA_RX_DIS_Q(1) | GMAC_RECEIVE_Q2_PTR_DMA_RX_Q_PTR(0);
+	gmac->GMAC_RECEIVE_Q1_PTR = GMAC_RECEIVE_Q1_PTR_DMA_RX_DIS_Q(1) | GMAC_RECEIVE_Q1_PTR_DMA_RX_Q_PTR(0);
+#endif
+
 	gmac->GMAC_NCR |= (GMAC_NCR_RXEN | GMAC_NCR_TXEN);
 }
 
@@ -1196,10 +1304,47 @@ static int nonpriority_queue_init(Gmac *gmac, struct gmac_queue *queue)
 	gmac->GMAC_DCFGR =
 		/* Receive Buffer Size (defined in multiples of 64 bytes) */
 		GMAC_DCFGR_DRBS(CONFIG_NET_BUF_DATA_SIZE >> 6) |
+
+		GMAC_DMA_CONFIG_RX_PBUF_SIZE(GMAC_DMA_CONFIG_RX_PBUF_SIZE_FULL_Val)
+		// Copy entire frame in blocks of rx_frame_size set in bit 16:23
+		| GMAC_DMA_CONFIG_HDR_DATA_SPLITTING_EN(0U)
+		// Select little endian mode for AHB/AXI transfers for management descriptor accesses
+		| GMAC_DMA_CONFIG_ENDIAN_SWAP_MANAGEMENT(0U)
+		// Select little endian mode for AHB/AXI transfers for packet descriptor accesses
+		| GMAC_DMA_CONFIG_ENDIAN_SWAP_PACKET(0U)
+		// 1: Use full configured addressable space (4 Kb)
+		| GMAC_DMA_CONFIG_TX_PBUF_SIZE(1U)
+		// 1: Checksum generation engine is enabled, to calculate; and substitute checksums for transmit frames
+		| GMAC_DMA_CONFIG_TX_PBUF_TCP_EN(1U)
+		// 1: Buffer pointed out by last descriptor as elastic
+		| GMAC_DMA_CONFIG_INFINITE_LAST_DBUF_SIZE_EN(0U)
+		// 1: Bit 16 of the receive buffer descriptor will represent FCS/CRC error, bit 26:network config should be enabled for it
+		| GMAC_DMA_CONFIG_CRC_ERROR_REPORT(0U)
+		// GMAC_DMA_CONFIG_RX_BUF_SIZE is configured when the GmacQueues are configured
+		// 1: Auto Discard RX frames during lack of resource, Note: Set to 1 is a prerequisite for rx phy timestamping correctly working
+		| GMAC_DMA_CONFIG_FORCE_DISCARD_ON_ERR(1U)
+		// Disable the burst TX at the EOP or EOB
+		| GMAC_DMA_CONFIG_FORCE_MAX_AMBA_BURST_TX(0U)
+		// Disable the burst RX at the EOP or EOB
+		| GMAC_DMA_CONFIG_FORCE_MAX_AMBA_BURST_RX(0U)
+		// Disable RX extended BD mode
+		| GMAC_DMA_CONFIG_RX_BD_EXTENDED_MODE_EN(0U)
+		// Disable TX extended BD mode
+		| GMAC_DMA_CONFIG_TX_BD_EXTENDED_MODE_EN(0U)
+		// 0:32b, 1:64b
+		| GMAC_DMA_CONFIG_DMA_ADDR_BUS_WIDTH_1(0U)
+		// 1xxxx: Attempt to use bursts of up to 16
+		// 001xx: Attempt to use bursts of up to 4
+		// 0001x: Always use SINGLE bursts
+		// 00001: Always use SINGLE bursts
+		// 00000: Attempt to use bursts of up to 256
+		| GMAC_DMA_CONFIG_AMBA_BURST_LENGTH(GMAC_DMA_CONFIG_AMBA_BURST_LENGTH_INCR4_Val) |
+
 #if defined(GMAC_DCFGR_RXBMS)
 		/* Use full receive buffer size on parts where this is selectable */
 		GMAC_DCFGR_RXBMS(3) |
 #endif
+
 		/* Attempt to use INCR4 AHB bursts (Default) */
 		GMAC_DCFGR_FBLDO_INCR4 |
 		/* DMA Queue Flags */
@@ -1412,6 +1557,7 @@ static int eth_tx(const struct device *dev, struct net_pkt *pkt)
 	uint8_t *frag_data;
 	uint16_t frag_len;
 	uint32_t err_tx_flushed_count_at_entry;
+	int ret;
 #if GMAC_MULTIPLE_TX_PACKETS == 1
 	unsigned int key;
 #endif
@@ -1421,6 +1567,11 @@ static int eth_tx(const struct device *dev, struct net_pkt *pkt)
 	struct gptp_hdr *hdr;
 #endif
 #endif
+
+	ret = gpio_pin_toggle_dt(&led2);
+	if (ret < 0) {
+		return ret;
+	}
 
 	__ASSERT(pkt, "buf pointer is NULL");
 	__ASSERT(pkt->frags, "Frame data missing");
@@ -1445,7 +1596,6 @@ static int eth_tx(const struct device *dev, struct net_pkt *pkt)
 	err_tx_flushed_count_at_entry = queue->err_tx_flushed_count;
 
 	frag = pkt->frags;
-
 	/* Keep reference to the descriptor */
 	tx_first_desc = &tx_desc_list->buf[tx_desc_list->head];
 
@@ -1565,10 +1715,15 @@ static int eth_tx(const struct device *dev, struct net_pkt *pkt)
 	if (hdr && need_timestamping(hdr)) {
 		net_if_add_tx_timestamp(pkt);
 	}
+
 #endif
 #endif
 #endif
 
+	ret = gpio_pin_toggle_dt(&led2);
+	if (ret < 0) {
+		return ret;
+	}
 	return 0;
 }
 
@@ -1582,10 +1737,15 @@ static void queue0_isr(const struct device *dev)
 	struct gmac_desc_list *tx_desc_list;
 	struct gmac_desc *tail_desc;
 	uint32_t isr;
+	int ret;
 
 	/* Interrupt Status Register is cleared on read */
 	isr = gmac->GMAC_ISR;
 	LOG_DBG("GMAC_ISR=0x%08x", isr);
+
+#ifdef CONFIG_SOC_FAMILY_MICROCHIP_PIC32
+	gmac->GMAC_ISR = isr;
+#endif
 
 	queue = &dev_data->queue_list[0];
 	rx_desc_list = &queue->rx_desc_list;
@@ -1599,6 +1759,11 @@ static void queue0_isr(const struct device *dev)
 		LOG_DBG("rx.w1=0x%08x, tail=%d",
 			tail_desc->w1,
 			rx_desc_list->tail);
+		ret = gpio_pin_toggle_dt(&led6);
+		if (ret < 0) {
+			return;
+		}
+
 		eth_rx(queue);
 	}
 
@@ -1618,6 +1783,13 @@ static void queue0_isr(const struct device *dev)
 
 	if (isr & GMAC_IER_HRESP) {
 		LOG_DBG("IER HRESP");
+	}
+
+	if (isr & GMAC_ISR_RCOMP) {
+		ret = gpio_pin_toggle_dt(&led6);
+		if (ret < 0) {
+			return;
+		}
 	}
 }
 
@@ -1710,6 +1882,8 @@ static void queue5_isr(const struct device *dev)
 static int eth_initialize(const struct device *dev)
 {
 	const struct eth_sam_dev_cfg *const cfg = dev->config;
+	int ret;
+#if(!CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
 	int retval;
 
 	cfg->config_func();
@@ -1727,6 +1901,28 @@ static int eth_initialize(const struct device *dev)
 	retval = pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_DEFAULT);
 
 	return retval;
+#endif
+	cfg->config_func();
+
+	if (!gpio_is_ready_dt(&led2)) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+
+	if (!gpio_is_ready_dt(&led6)) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led6, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+
+	return 0;
 }
 
 #if DT_INST_NODE_HAS_PROP(0, mac_eeprom)
@@ -1928,7 +2124,11 @@ static enum ethernet_hw_caps eth_sam_gmac_get_capabilities(const struct device *
 #if GMAC_ACTIVE_PRIORITY_QUEUE_NUM >= 1
 		ETHERNET_QAV |
 #endif
+//#if (CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
+		//ETHERNET_LINK_10BASE;
+//#else
 		ETHERNET_LINK_100BASE;
+//#endif
 }
 
 #if GMAC_ACTIVE_PRIORITY_QUEUE_NUM >= 1

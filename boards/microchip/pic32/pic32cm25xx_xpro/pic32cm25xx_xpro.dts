@@ -15,8 +15,8 @@
 	model = "PIC32CM25XX Xplained Pro";
 	compatible = "pic32cm25xx,xpro", "microchip,pic32cm2564", "microchip,pic32cm25xx";
 	chosen {
-		zephyr,console = &sercom3;
-		zephyr,shell-uart = &sercom3;
+		zephyr,console = &sercom0;
+		zephyr,shell-uart = &sercom0;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 	};
@@ -60,11 +60,56 @@
 };
 
 &cpu0 {                                                                         
-        clock-frequency = <DT_FREQ_M(50)>;                                      
+        //clock-frequency = <DT_FREQ_M(50)>;                                      
+        clock-frequency = <50000000>;                                      
+        //clock-frequency = <32000>;                                      
 };
 
-dut: &sercom1 {
+&mdio {
 	status = "okay";
+
+	//pinctrl-0 = <&mdio_default>;
+	//pinctrl-names = "default";
+
+	phy: ethernet-phy@1 {
+#if 0
+		compatible = "ethernet-phy";
+		status = "okay";
+		reg = <1>;
+#endif
+#if 1
+		compatible = "microchip,t1s-phy";
+		reg = <0x1>;
+		plca-enable;
+		plca-node-id = <0>;
+		plca-node-count = <2>;
+		plca-burst-count = <0>;
+		plca-burst-timer = <0x80>;
+		plca-to-timer = <0x20>;
+		status = "okay";
+#endif
+	};
+};
+
+&gmac {
+	status = "okay";
+	phy-handle = <&phy>;
+};
+
+&sercom0 {
+	status = "okay";
+	compatible = "microchip,pic32-uart";
+	current-speed = <115200>;
+	rxpo = <1>;
+	txpo = <0>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-0 = <&sercom0_uart_default>;
+	pinctrl-names = "default";
+};
+dut: &sercom1 {
+	status = "disabled";
 	compatible = "microchip,pic32-uart";
 	current-speed = <115200>;
 	rxpo = <1>;
@@ -77,7 +122,7 @@ dut: &sercom1 {
 };
 
 dut_aux: &sercom2 {
-	status = "okay";
+	status = "disabled";
 	compatible = "microchip,pic32-uart";
 	current-speed = <115200>;
 	rxpo = <1>;
@@ -90,7 +135,7 @@ dut_aux: &sercom2 {
 };
 
 &sercom3 {
-	status = "okay";
+	status = "disabled";
 	compatible = "microchip,pic32-uart";
 	current-speed = <115200>;
 	rxpo = <1>;

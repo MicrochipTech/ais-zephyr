@@ -27,6 +27,26 @@ LOG_MODULE_REGISTER(mdio_sam, CONFIG_MDIO_LOG_LEVEL);
 #define GMAC_NCR        NCR.reg
 #endif
 
+#ifdef CONFIG_SOC_FAMILY_MICROCHIP_PIC32
+#define Gmac            gmac_registers_t
+#define GMAC_MAN        GMAC_PHY_MANAGEMENT
+#define GMAC_NSR        GMAC_NETWORK_STATUS
+#define GMAC_NCR        GMAC_NETWORK_CONTROL
+#define GMAC_NCFGR      GMAC_NETWORK_CONFIG
+
+#define GMAC_NCR_MPE		GMAC_NETWORK_CONTROL_MAN_PORT_EN_Msk
+#define GMAC_NSR_IDLE		GMAC_NETWORK_STATUS_MAN_DONE_Msk
+
+#define GMAC_MAN_DATA_Msk	GMAC_PHY_MANAGEMENT_PHY_WRITE_READ_DATA_Msk
+
+#define GMAC_MAN_CLTTO		GMAC_PHY_MANAGEMENT_WRITE1_Msk
+#define GMAC_MAN_OP(op)		GMAC_PHY_MANAGEMENT_OPERATION(op)
+#define GMAC_MAN_WTN(val)	GMAC_PHY_MANAGEMENT_WRITE10(val)
+#define GMAC_MAN_PHYA(prtad)	GMAC_PHY_MANAGEMENT_PHY_ADDRESS(prtad)
+#define GMAC_MAN_REGA(regad)	GMAC_PHY_MANAGEMENT_REGISTER_ADDRESS(regad)
+#define GMAC_MAN_DATA(data_in)	GMAC_PHY_MANAGEMENT_PHY_WRITE_READ_DATA(data_in)
+#endif
+
 struct mdio_sam_dev_data {
 	struct k_sem sem;
 };
@@ -92,6 +112,7 @@ static int mdio_sam_write(const struct device *dev, uint8_t prtad,
 			     data, NULL);
 }
 
+#if (!CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
 static int mdio_sam_read_c45(const struct device *dev, uint8_t prtad,
 			     uint8_t devad, uint16_t regad, uint16_t *data)
 {
@@ -121,6 +142,7 @@ static int mdio_sam_write_c45(const struct device *dev, uint8_t prtad,
 
 	return err;
 }
+#endif
 
 static void mdio_sam_bus_enable(const struct device *dev)
 {
@@ -138,12 +160,22 @@ static void mdio_sam_bus_disable(const struct device *dev)
 
 static int mdio_sam_initialize(const struct device *dev)
 {
+#if (!CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
 	const struct mdio_sam_dev_config *const cfg = dev->config;
-	struct mdio_sam_dev_data *const data = dev->data;
 	int retval;
+#endif
+	struct mdio_sam_dev_data *const data = dev->data;
 
 	k_sem_init(&data->sem, 1, 1);
 
+#if (CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
+	PINCFG_REGS->PINCFG_PHYRX_PAD_CFG &= ~PINCFG_PHYRX_PAD_CFG_PU_ENC_Msk;
+	PINCFG_REGS->PINCFG_PHYED_PAD_CFG &= ~PINCFG_PHYED_PAD_CFG_PU_ENC_Msk;
+	PINCFG_REGS->PINCFG_PHYTX_PAD_CFG |= PINCFG_PHYTX_PAD_CFG_DRVSTR(PINCFG_PHYTX_PAD_CFG_DRVSTR_4mA_Val);
+	PINCFG_REGS->PINCFG_PHYRX_PAD_CFG |= PINCFG_PHYRX_PAD_CFG_DRVSTR(PINCFG_PHYRX_PAD_CFG_DRVSTR_2p8mA_Val);
+	PINCFG_REGS->PINCFG_PHYED_PAD_CFG |= PINCFG_PHYED_PAD_CFG_DRVSTR(PINCFG_PHYED_PAD_CFG_DRVSTR_2p8mA_Val);
+	return 0;
+#else
 #ifdef CONFIG_SOC_FAMILY_ATMEL_SAM
 	/* Enable GMAC module's clock */
 	(void) clock_control_on(SAM_DT_PMC_CONTROLLER, (clock_control_subsys_t) &cfg->clock_cfg);
@@ -156,13 +188,16 @@ static int mdio_sam_initialize(const struct device *dev)
 	retval = pinctrl_apply_state(cfg->pcfg, PINCTRL_STATE_DEFAULT);
 
 	return retval;
+#endif
 }
 
 static DEVICE_API(mdio, mdio_sam_driver_api) = {
 	.read = mdio_sam_read,
 	.write = mdio_sam_write,
+#if (!CONFIG_SOC_FAMILY_MICROCHIP_PIC32)
 	.read_c45 = mdio_sam_read_c45,
 	.write_c45 = mdio_sam_write_c45,
+#endif
 	.bus_enable = mdio_sam_bus_enable,
 	.bus_disable = mdio_sam_bus_disable,
 };

@@ -7,6 +7,13 @@
 #include <dt-bindings/pinctrl/pic32-cm25xx-pinctrl.h>
 
 &pinctrl {
+	sercom0_uart_default: sercom0_uart_default {
+		group1 {
+			pinmux = <DIO0_SERCOM0_PAD>,
+				 <DIO1_SERCOM0_PAD>;
+		};
+	};
+
 	sercom1_uart_default: sercom1_uart_default {
 		group1 {
 			pinmux = <DIO4_SERCOM1_PAD>,
